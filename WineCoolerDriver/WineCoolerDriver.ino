@@ -8,8 +8,8 @@
 // PWM_INCREMENT is multplied by the diff between current temp and target setpoint, then added
 // to PWM_BASE - so if you have a difference >= 3.4°, PWM will be running at max (255). This will
 // gradually reduce as the temp difference decrease, down to a minimum of PWM_MIN.
-#define PWM_BASE 170
-#define PWM_INCREMENT 25
+#define PWM_BASE 150
+#define PWM_INCREMENT 30
 #define PWM_MIN 100         // Set to minimum PWM duty cycle - Don't make it too low, since we want the power supply fan to run at a minimum level
     
 #define CW   1
