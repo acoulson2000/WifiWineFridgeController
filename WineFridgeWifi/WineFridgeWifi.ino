@@ -43,8 +43,8 @@
 // You can optionaly have buttons to control the temp setting in addition to WiFi.
 // If so, set the pin numbers for the temp increase and decrease buttons here.
 // (pull low when pressed)
-#define GPIO_TEMP_DOWN 14
-#define GPIO_TEMP_UP 13
+int GPIO_TEMP_DOWN = 14;
+int GPIO_TEMP_UP = 13;
 
 //define default startup values here. Target setpoint is written to config.json in the SPIFFS
 //file system after being set. After being set once, that value will override the ones here
@@ -320,9 +320,15 @@ void checkForTempUpdate() {
 }
 
 void checkForButtonPress() {
-    if (millis() - lastBtnMillis > 30) {
+  if (millis() - lastBtnMillis > 30) {
     currentBtnTempDown = digitalRead(GPIO_TEMP_DOWN);
     currentBtnTempUp = digitalRead(GPIO_TEMP_UP);
+    if (lastBtnTempDown != currentBtnTempDown) {
+     Serial.print("Down button change: ");Serial.println(currentBtnTempDown);
+    }
+    if (lastBtnTempUp != currentBtnTempUp) {
+     Serial.print("Up button change: ");Serial.println(currentBtnTempUp);
+    }
     if (lastBtnTempDown == 1 && currentBtnTempDown == 0 && fridgeTempSetpoint > 40) {
       fridgeTempSetpoint -= 1;
       updateDisplay = true;

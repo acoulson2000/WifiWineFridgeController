@@ -16,12 +16,13 @@
 #define CCW  2
 #define CS_THRESHOLD 100
   
-
+// We use serial2 to communicate with the head unit. It requires the SoftwareSerial lib and uses any two
+// available pins.
 SoftwareSerial serial2(10, 11); // RX, TX
 
 int tempSetPoint = 60;
 int temp = 60;
-float movingAverage[10];
+float movingAverage;
 int samples[NUMSAMPLES];
 
 /*  VNH2SP30 (Monster Moto shield) pin definitions
@@ -75,24 +76,27 @@ void setup() {
     pinMode(pwmpin[i], OUTPUT);
   }
 
-  for (int i=0; i<10; i++) { movingAverage[i] = temp; }
+  movingAverage = temp;
 }
 
 int ch;
 
 void loop() {
   bool gotNewTemp = false;
+  // Check for temp setting from head unit
   while (serial2.available() > 0) {
     gotNewTemp = true;
     ch = serial2.read();
     Serial.print("got: ");
     Serial.println(ch, DEC);
   }
+  // If we got a temp setting and it's within reasonable bounds, use it and log it.
   if (gotNewTemp && ch > 32 && ch < 80) {
     tempSetPoint = ch;
     Serial.print("Set temp to: ");
     Serial.println(ch, DEC);
   }
+  // We can also take settings over primary Serial port for debugging
   if (Serial.available() > 0) {
     Serial.print("Set temp to: ");
     int ch = Serial.read();
@@ -102,6 +106,7 @@ void loop() {
     }
   }
 
+  // Toggle status LED
   if (stat == LOW) {
     stat = HIGH;
   } else {
@@ -118,32 +123,27 @@ void loop() {
     delay(100);
   }
  
-  // average all the samples out
+  // average NUMSAMPLES samples out to get a moving average and smoother PWM transitions
   average = 0;
   for (i=0; i< NUMSAMPLES; i++) {
     average += samples[i];
   }
   average /= NUMSAMPLES;
 
-  for (int i=0; i<9; i++) { 
-    movingAverage[i] = movingAverage[i+1];
-  }
-  movingAverage[9] = average;
-
   Serial.print("Latest reading°F: "); 
   Serial.print(average);
   
-  for (int i=0; i<9; i++) {
-    average += movingAverage[i];
-  }
-  average /= 10;
-  temp = (int) (average + .5);
+  movingAverage = ((movingAverage * 19) + average / 20;
+  average = movingAverage;
+
+  temp = (int) (average + .5);	// round up for display
 
   Serial.print(" Smoothed°F: "); 
   Serial.print(average);
   Serial.print(" Target°F: "); 
   Serial.print(tempSetPoint);
 
+  // Determine PWM duty cycle and set it on the two Moto PWM pins
   float diff = average - (float)tempSetPoint;
   Serial.print(" pwm adj: "); 
   Serial.print(diff);
@@ -161,7 +161,12 @@ void loop() {
   delay(3000);
 }
 
- 
+
+// This is from an example for driving the Moto shield for motor control.
+// We only use it in one polarity (counterclockwise), although I suppose you
+// could theoretically tweak things a bit to run in reverse and it might WARM
+// the fridge :-)
+
 /* motorGo() will set a motor going in a specific direction
  the motor will continue going in that direction, at that speed
  until told to do otherwise.
