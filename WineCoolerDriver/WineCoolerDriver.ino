@@ -9,7 +9,7 @@
 // to PWM_BASE - so if you have a difference >= 3.4°, PWM will be running at max (255). This will
 // gradually reduce as the temp difference decrease, down to a minimum of PWM_MIN.
 #define PWM_BASE 150
-#define PWM_INCREMENT 30
+#define PWM_INCREMENT 50
 #define PWM_MIN 100         // Set to minimum PWM duty cycle - Don't make it too low, since we want the power supply fan to run at a minimum level
     
 #define CW   1
@@ -38,6 +38,7 @@ int statpin = 13;
 
 int pwm = 0;
 int stat = LOW;
+byte ack = 0;
 
 // Sample code cribbed from interwebs didn't seem to produce legit results - possibly since
 // I don't know what device is used as the sensor in the wine cooler. So, instead, I took
@@ -85,10 +86,17 @@ void loop() {
   bool gotNewTemp = false;
   // Check for temp setting from head unit
   while (serial2.available() > 0) {
-    gotNewTemp = true;
     ch = serial2.read();
     Serial.print("got: ");
     Serial.println(ch, DEC);
+    if (ch == 0) {  // ping
+      serial2.println("OK");
+      delay(10);
+      ack = pwm;
+      serial2.write(ack);
+    } else {
+      gotNewTemp = true;
+    }
   }
   // If we got a temp setting and it's within reasonable bounds, use it and log it.
   if (gotNewTemp && ch > 32 && ch < 80) {
@@ -133,7 +141,7 @@ void loop() {
   Serial.print("Latest reading°F: "); 
   Serial.print(average);
   
-  movingAverage = ((movingAverage * 19) + average / 20;
+  movingAverage = ((movingAverage * 19) + average) / 20;
   average = movingAverage;
 
   temp = (int) (average + .5);	// round up for display
@@ -205,4 +213,3 @@ void motorGo(uint8_t motor, uint8_t direct, uint8_t pwm)
     }
   }
 }
-
