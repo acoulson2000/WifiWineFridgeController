@@ -39,7 +39,7 @@
 #define SERIAL2_RX 12
 #define SERIAL2_TX 15
 #define OLED_RESET 16 // override necessary to make OLED on Wifi Kit 8 work
-#define CONFIG_PORTAL_TIMEOUT 120 // how long to stay in config mode on boot-up
+#define CONFIG_PORTAL_TIMEOUT 60 // how long to stay in config mode on boot-up
 // You can optionaly have buttons to control the temp setting in addition to WiFi.
 // If so, set the pin numbers for the temp increase and decrease buttons here.
 // (pull low when pressed)
@@ -52,6 +52,8 @@ int GPIO_TEMP_UP = 13;
 unsigned int fridgeTempCurrent = 60;
 unsigned int fridgeTempSetpoint = 60;
 char Temp_Setpoint[3] = "60";
+unsigned int pwmVal = 0;
+boolean ackOK = false;
 
 Adafruit_SSD1306 display(OLED_RESET);
 
@@ -154,10 +156,10 @@ void setup() {
   pinMode(GPIO_TEMP_UP, INPUT_PULLUP);
   
   // put your setup code here, to run once:
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.println();
 
-  serial2.begin(9600);
+  serial2.begin(115200);
 
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3C (for the 128x32)
   display.display();
@@ -319,6 +321,25 @@ void checkForTempUpdate() {
   }   
 }
 
+void checkForAck() {
+  serial2.write((byte)0);
+  while (serial2.available() == 0) {
+    delay(5);
+  }
+  Serial.print("Got 4...");
+  if (serial2.read() == 'O' && serial2.read() == 'K') {
+    ackOK = true;
+    serial2.read();
+    serial2.read();
+    pwmVal = serial2.read();
+    Serial.print("Got ack:");
+    Serial.println(pwmVal, DEC);
+  } else {
+    ackOK = false;
+    Serial.println("Bad data");
+  }
+}
+
 void checkForButtonPress() {
   if (millis() - lastBtnMillis > 30) {
     currentBtnTempDown = digitalRead(GPIO_TEMP_DOWN);
@@ -354,13 +375,14 @@ void renderDisplay() {
   display.println(fridgeTempCurrent, DEC);
   display.drawCircle(38,2,2,WHITE);
   display.setTextSize(1);
-  display.setTextColor(WHITE);
   display.setCursor(64,0);
   display.print("Set: ");
   display.setTextSize(2);
   display.println(fridgeTempSetpoint);
-  display.setCursor(0,24);
   display.setTextSize(1);
+  display.setCursor(64,12);
+  display.print(pwmVal);
+  display.setCursor(0,24);
   display.print("IP: "); display.print(WiFi.localIP());
   if (WiFi.status() == WL_CONNECTED) {
     display.drawBitmap(110, 19, wifi_connected, 15, 12, 1);
@@ -378,6 +400,7 @@ void loop() {
   checkForButtonPress();
   
   if (millis() - lastMillis > 3000) {
+    checkForAck();
     updateDisplay = true;
     if (updateDisplay) {
       renderDisplay();
