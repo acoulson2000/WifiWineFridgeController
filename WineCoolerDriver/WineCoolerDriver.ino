@@ -62,8 +62,8 @@ float Thermistor(int RawADC) {
 }
 
 void setup() {
-  Serial.begin(9600);
-  serial2.begin(9600);
+  Serial.begin(115200);
+  serial2.begin(115200);
 
   analogReference(DEFAULT);
   
@@ -90,10 +90,9 @@ void loop() {
     Serial.print("got: ");
     Serial.println(ch, DEC);
     if (ch == 0) {  // ping
-      serial2.println("OK");
-      delay(10);
       ack = pwm;
       serial2.write(ack);
+      serial2.println("OK");
     } else {
       gotNewTemp = true;
     }
